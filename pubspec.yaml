@@ -1,0 +1,29 @@
+name: gms_location_settings_dialog
+description: >
+  Android-only Flutter plugin that shows the Google Play Services in-app
+  location settings dialog (ResolvableApiException). On iOS, reports the
+  current CLLocationManager.locationServicesEnabled() value — no dialog.
+  Requires GMS; does not work on Huawei HMS or GMS-less devices.
+version: 1.0.0
+publish_to: none
+
+environment:
+  sdk: ^3.0.0
+  flutter: ">=3.10.0"
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: com.example.gms_location_settings_dialog
+        pluginClass: GmsLocationSettingsDialogPlugin
+      ios:
+        pluginClass: GmsLocationSettingsDialogPlugin
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
