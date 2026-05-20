@@ -24,6 +24,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
+    namespace 'com.example.gms_location_settings_dialog'
     compileSdkVersion 34
 
     compileOptions {
