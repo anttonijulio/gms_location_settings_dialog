@@ -2,7 +2,9 @@
 
 A Flutter plugin that shows the Google Play Services in-app location settings dialog on Android — the dialog with a GPS toggle that appears **inside the app**, without redirecting the user to system Settings.
 
-On iOS, no equivalent API exists; the plugin reports the current `CLLocationManager.locationServicesEnabled()` value with no dialog.
+When the in-app dialog is unavailable (unsupported device on Android, or iOS), the plugin can automatically redirect the user to the system location settings screen as a fallback.
+
+On iOS, no equivalent in-app dialog API exists; the plugin reports the current `CLLocationManager.locationServicesEnabled()` value and optionally opens the app's Settings page.
 
 > **Scope:** This plugin does one thing — show the GMS location settings dialog. It does not request location permission. Use `permission_handler` or `geolocator` for that.
 
@@ -12,8 +14,8 @@ On iOS, no equivalent API exists; the plugin reports the current `CLLocationMana
 
 | Platform | Behavior |
 |---|---|
-| Android (GMS) | Shows the `ResolvableApiException` dialog with a GPS toggle. Returns `true` if the user enables location, `false` if they dismiss. |
-| iOS | No in-app dialog available. Returns the current `CLLocationManager.locationServicesEnabled()` value immediately. |
+| Android (GMS) | Shows the `ResolvableApiException` dialog with a GPS toggle. Returns `true` if the user enables location, `false` if they dismiss. If GMS cannot show the dialog, redirects to system location settings when `fallback: true`. |
+| iOS | No in-app dialog available. Returns the current `CLLocationManager.locationServicesEnabled()` value. When location is disabled and `fallback: true`, opens the app's Settings page. |
 | Web / Desktop | Not implemented. `show()` returns `false` silently. |
 
 ---
@@ -88,9 +90,17 @@ Future<void> ensureLocationEnabled() async {
   if (enabled) {
     // GPS is on — proceed
   } else {
-    // User dismissed or GPS could not be enabled
+    // User dismissed, was redirected to settings, or GPS could not be enabled
   }
 }
+```
+
+### Disable fallback redirect
+
+By default, `show()` redirects to system settings when the in-app dialog is unavailable. Pass `fallback: false` to suppress this and get only the raw result:
+
+```dart
+final enabled = await dialog.show(fallback: false);
 ```
 
 ### Typical usage with `geolocator`
@@ -125,13 +135,19 @@ Default constructor. Stateless — safe to instantiate once and reuse, or create
 
 ---
 
-### `Future<bool> show()`
+### `Future<bool> show({bool fallback = true})`
 
 Shows the GMS location settings dialog and returns whether location services are enabled after resolution.
 
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `fallback` | `bool` | `true` | When `true`, redirects to system location settings if the in-app dialog cannot be shown (Android: GMS unsupported; iOS: always, since no dialog exists). When `false`, returns `false` immediately without redirecting. |
+
 **Returns:**
 - `true` — location services are enabled (either were already on, or user enabled them via the dialog)
-- `false` — user dismissed the dialog, GMS unavailable, activity not attached, or any error occurred
+- `false` — user dismissed the dialog, fallback redirect was triggered, GMS unavailable, activity not attached, or any error occurred
 
 **Throws:** nothing — all `PlatformException` and `MissingPluginException` are caught internally and return `false`.
 
@@ -147,8 +163,10 @@ Shows the GMS location settings dialog and returns whether location services are
 ## Limitations
 
 - **One call at a time (Android):** Calling `show()` while a dialog is already visible returns `false` immediately (`ALREADY_PENDING`). Await the first call before calling again.
-- **No dialog on iOS:** Apple provides no API for an in-app GPS toggle. `show()` only reads the current state.
-- **GMS required on Android:** Returns `false` on Huawei HMS devices and any device without Google Play Services.
+- **No dialog on iOS:** Apple provides no API for an in-app GPS toggle. `show()` only reads the current state and optionally redirects to Settings when `fallback: true`.
+- **Fallback is fire-and-forget:** When a settings redirect is triggered, the plugin returns `false` immediately — it cannot know whether the user enabled location after visiting the settings screen. Re-call `show()` after the user returns to the app if needed.
+- **iOS fallback opens app Settings, not system location settings:** Due to Apple's URL scheme restrictions, the fallback opens the app's own Settings page (where location permission can be toggled), not the top-level system Location Services screen.
+- **GMS required on Android:** Returns `false` on Huawei HMS devices and any device without Google Play Services. If `fallback: true`, the user is redirected to the system location settings screen instead.
 - **Vendor inconsistency:** Dialog appearance and behavior may vary across Samsung, Xiaomi, OPPO, Vivo, and other Android skins. The GMS API call is consistent; the rendered dialog is not guaranteed to look or behave identically on all devices.
 - **Web / macOS / Windows / Linux:** Not implemented — `show()` returns `false`.
 - **Permission not included:** This plugin only toggles the GPS hardware switch. Runtime location permission (`ACCESS_FINE_LOCATION` / `NSLocationWhenInUseUsageDescription`) must be handled separately.

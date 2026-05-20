@@ -60,6 +60,44 @@ void main() {
       expect(capturedMethod, equals('show'));
     });
 
+    test('sends fallback: true by default', () async {
+      dynamic capturedArgs;
+      mockChannel((call) async {
+        capturedArgs = call.arguments;
+        return true;
+      });
+
+      await sut.show();
+
+      expect(capturedArgs, isA<Map>());
+      expect((capturedArgs as Map)['fallback'], isTrue);
+    });
+
+    test('sends fallback: false when specified', () async {
+      dynamic capturedArgs;
+      mockChannel((call) async {
+        capturedArgs = call.arguments;
+        return false;
+      });
+
+      await sut.show(fallback: false);
+
+      expect(capturedArgs, isA<Map>());
+      expect((capturedArgs as Map)['fallback'], isFalse);
+    });
+
+    test('sends fallback: true when explicitly set to true', () async {
+      dynamic capturedArgs;
+      mockChannel((call) async {
+        capturedArgs = call.arguments;
+        return false;
+      });
+
+      await sut.show(fallback: true);
+
+      expect((capturedArgs as Map)['fallback'], isTrue);
+    });
+
     test('returns false on PlatformException ALREADY_PENDING', () async {
       mockChannel(
         (_) async => throw PlatformException(

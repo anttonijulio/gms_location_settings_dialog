@@ -3,6 +3,7 @@ package com.example.gms_location_settings_dialog
 import android.app.Activity
 import android.content.Intent
 import android.content.IntentSender
+import android.provider.Settings
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
@@ -59,12 +60,12 @@ class GmsLocationSettingsDialogPlugin : FlutterPlugin, MethodCallHandler, Activi
 
     override fun onMethodCall(call: MethodCall, result: Result) {
         when (call.method) {
-            "show" -> showDialog(result)
+            "show" -> showDialog(call, result)
             else -> result.notImplemented()
         }
     }
 
-    private fun showDialog(result: Result) {
+    private fun showDialog(call: MethodCall, result: Result) {
         val currentActivity = activity
         if (currentActivity == null) {
             result.error("NO_ACTIVITY", "Activity not available", null)
@@ -74,6 +75,8 @@ class GmsLocationSettingsDialogPlugin : FlutterPlugin, MethodCallHandler, Activi
             result.error("ALREADY_PENDING", "A dialog is already showing", null)
             return
         }
+
+        val fallback = call.argument<Boolean>("fallback") ?: true
 
         val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10_000L)
             .build()
@@ -97,12 +100,21 @@ class GmsLocationSettingsDialogPlugin : FlutterPlugin, MethodCallHandler, Activi
                         exception.startResolutionForResult(currentActivity, REQUEST_CHECK_SETTINGS)
                     } catch (_: IntentSender.SendIntentException) {
                         pendingResult = null
+                        if (fallback) openLocationSettings(currentActivity)
                         result.success(false)
                     }
                 } else {
+                    if (fallback) openLocationSettings(currentActivity)
                     result.success(false)
                 }
             }
+    }
+
+    private fun openLocationSettings(activity: Activity) {
+        val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        activity.startActivity(intent)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
